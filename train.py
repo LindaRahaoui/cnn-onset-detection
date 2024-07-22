@@ -71,6 +71,8 @@ def main(fold):
     # Training epochs loop
     train_loss_epoch = []
     val_loss_epoch = []
+    best_val_loss = float('inf')
+
     for epoch in range(max_epochs):
         train_loss_epoch += [0]
         val_loss_epoch += [0]
@@ -111,6 +113,12 @@ def main(fold):
 
         # Print loss in current epoch
         print('Epoch no: %d/%d\tTrain loss: %f\tVal loss: %f' % (epoch, max_epochs, train_loss_epoch[-1], val_loss_epoch[-1]))
+
+        # Check if this is the best model so far and save it with the epoch number
+        if val_loss_epoch[-1] < best_val_loss:
+            best_val_loss = val_loss_epoch[-1]
+            best_model_path = f'best_model_{fold}_epoch_{epoch}.pt'
+            torch.save(model.state_dict(), best_model_path)
 
         # Update LR and momentum (only if using SGD)
         for param_group in optimizer.param_groups:
