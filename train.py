@@ -11,6 +11,7 @@ import os
 def balance_data(ids, labels):
     ids2add = []
     for idi in ids:
+        print(idi)
         if labels[idi] == 1:
             ids2add.append(idi)
             ids2add.append(idi)
@@ -21,7 +22,7 @@ def balance_data(ids, labels):
 def main(fold):
     # Use GPU
     use_cuda = torch.cuda.is_available()
-    device = torch.device("cuda:1" if use_cuda else "cpu")
+    device = torch.device("cuda:0" if use_cuda else "cpu")
 
     # Parameters for data loader
     params = {'batch_size': 256, 'shuffle': True, 'num_workers': 6}
@@ -29,7 +30,8 @@ def main(fold):
 
     # Data
     datadir = '../../Dataset/data_pt_test'
-    songlist = np.loadtxt('songlist.txt', dtype=str)
+    with open('songlist.txt', 'r') as file:
+        songlist = file.read().splitlines()
     labels = np.load('labels_master.npy', allow_pickle=True).item()
     weights = np.load('weights_master.npy', allow_pickle=True).item()
 
