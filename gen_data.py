@@ -24,7 +24,7 @@ onset_dir ='/content/drive/MyDrive/Dataset_cnn/annotations/'
 save_dir = '/content/drive/MyDrive/Dataset_cnn/data_pt_test'
 
 # Data stats for normalization
-stats = np.load('means_stds.npy')
+stats = np.load('/content/cnn-onset-detection/means_stds.npy')
 means = stats[0]
 stds = stats[1]
 
@@ -33,13 +33,20 @@ contextlen = 7  # +- frames
 duration = 2 * contextlen + 1
 
 # Main
-with open('songlist.txt', 'r') as file:
+with open('/content/cnn-onset-detection/songlist.txt', 'r') as file:
     songlist = file.read().splitlines()
 audio_format = '.wav'
 labels_master = {}
 weights_master = {}
 filelist = []
 for item in songlist:
+    savedir = os.path.join(save_dir, item)
+    
+    # Skip already processed items if there are more than 1000 files
+    if os.path.exists(savedir) and len(os.listdir(savedir)) > 1005:
+        print(f'Skipping {item}, already processed.')
+        continue
+    
     # Load audio and onsets
     x, fs = librosa.load(os.path.join(audio_dir, item + audio_format), sr=44100)
     print(onset_dir, item + '_annotation.csv')
@@ -91,14 +98,19 @@ for item in songlist:
     weights_dict = {}
     
     # Save
-    savedir = os.path.join(save_dir, item)
     if not os.path.exists(savedir):
         os.makedirs(savedir)
     
     for i_chunk in range(melgram1_chunks.shape[0]):
         savepath = os.path.join(savedir, str(i_chunk) + '.pt')
-        print(savepath)
+        print(f'Saving chunk {i_chunk} to {savepath}')
         torch.save(torch.tensor(np.array([melgram1_chunks[i_chunk], melgram2_chunks[i_chunk], melgram3_chunks[i_chunk]])), savepath)
+        
+        # Verify if the file was created
+        if not os.path.exists(savepath):
+            print(f'Error: {savepath} was not created.')
+            continue
+            
         filelist.append(savepath)
         labels_dict[savepath] = labels[i_chunk]
         weights_dict[savepath] = weights[i_chunk]
