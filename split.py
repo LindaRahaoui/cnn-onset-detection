@@ -7,7 +7,7 @@ with open('songlist.txt', 'r') as file:
     songlist = np.array(file.read().splitlines())
 
 # Créer un répertoire pour les splits s'il n'existe pas
-split_dir = '../../Dataset/splits'
+split_dir = '/content/drive/MyDrive/Dataset_cnn/splits'
 if not os.path.exists(split_dir):
     os.makedirs(split_dir)
 

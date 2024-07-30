@@ -3,7 +3,7 @@ import os
 import librosa
 
 # Data directory
-audio_dir = '../../Dataset/wav'
+audio_dir = '/content/drive/MyDrive/Dataset_cnn/wav'
 
 # Load the list of song names from 'songlist.txt' 
 with open('songlist.txt', 'r') as file:

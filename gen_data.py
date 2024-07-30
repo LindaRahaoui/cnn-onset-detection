@@ -19,9 +19,9 @@ def makechunks(x, duration):
     return y
 
 # Data dirs
-audio_dir = '../../Dataset/wav'
-onset_dir = '../../Dataset/annotations/'
-save_dir = '../../Dataset/data_pt_test'
+audio_dir ='/content/drive/MyDrive/Dataset_cnn/wav'
+onset_dir ='/content/drive/MyDrive/Dataset_cnn/annotations/'
+save_dir = '/content/drive/MyDrive/Dataset_cnn/data_pt_test'
 
 # Data stats for normalization
 stats = np.load('means_stds.npy')

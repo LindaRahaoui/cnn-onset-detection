@@ -29,7 +29,7 @@ def main(fold):
     max_epochs = 50
 
     # Data
-    datadir = '../../Dataset/data_pt_test'
+    datadir = '/content/drive/MyDrive/Dataset_cnn/data_pt_test'
     with open('songlist.txt', 'r') as file:
         songlist = file.read().splitlines()
     labels = np.load('labels_master.npy', allow_pickle=True).item()
