@@ -39,66 +39,75 @@ audio_format = '.wav'
 labels_master = {}
 weights_master = {}
 filelist = []
+
 total_files = len(songlist)
 processed_files = 0
 
-# Count already processed files
 for item in songlist:
     savedir = os.path.join(save_dir, item)
-    if os.path.exists(savedir) and len(os.listdir(savedir)) > 1005:
-        processed_files += 1
 
-for item in songlist:
-    savedir = os.path.join(save_dir, item)
-    
-    # Skip already processed items if there are more than 1000 files
-    if os.path.exists(savedir) and len(os.listdir(savedir)) > 1005:
-        print(f'Skipping {item}, already processed.')
-        continue
-    
+    # Check if the directory exists
+    if os.path.exists(savedir):
+        # Load existing labels and weights
+        labels_path = os.path.join(savedir, 'labels.txt')
+        weights_path = os.path.join(savedir, 'weights.txt')
+
+        if os.path.exists(labels_path) and os.path.exists(weights_path):
+            existing_labels = np.loadtxt(labels_path)
+            existing_weights = np.loadtxt(weights_path)
+            labels_dict = {}
+            weights_dict = {}
+            for i in range(existing_labels.shape[0]):
+                file_path = os.path.join(savedir, f"{i}.pt")
+                labels_dict[file_path] = existing_labels[i]
+                weights_dict[file_path] = existing_weights[i]
+            labels_master.update(labels_dict)
+            weights_master.update(weights_dict)
+            processed_files += 1
+            print(f'Skipping {item}, already processed. ({processed_files}/{total_files} files processed)')
+            continue
+
     # Load audio and onsets
     x, fs = librosa.load(os.path.join(audio_dir, item + audio_format), sr=44100)
-    print(onset_dir, item + '_annotation.csv')
     if not os.path.exists(os.path.join(onset_dir, item + '_annotation.csv')):
-        path = os.path.join(onset_dir, item + '_annotation.csv')
-        print(f"{path} n'existe pas")
-        break
-    
+        print(f"{os.path.join(onset_dir, item + '_annotation.csv')} n'existe pas")
+        continue
+
     # Load only the first column (onsets) and skip the first row (header)
     onsets = np.loadtxt(os.path.join(onset_dir, item + '_annotation.csv'), delimiter=',', skiprows=1, usecols=0)
-    
+
     # Get mel spectrogram
     melgram1 = librosa.feature.melspectrogram(y=x, sr=fs, n_fft=1024, hop_length=441, n_mels=80, fmin=27.5, fmax=16000)
     melgram2 = librosa.feature.melspectrogram(y=x, sr=fs, n_fft=2048, hop_length=441, n_mels=80, fmin=27.5, fmax=16000)
     melgram3 = librosa.feature.melspectrogram(y=x, sr=fs, n_fft=4096, hop_length=441, n_mels=80, fmin=27.5, fmax=16000)
-    
+
     # Log scaling
     melgram1 = 10 * np.log10(1e-10 + melgram1)
     melgram2 = 10 * np.log10(1e-10 + melgram2)
     melgram3 = 10 * np.log10(1e-10 + melgram3)
-    
+
     # Normalize
     melgram1 = (melgram1 - np.atleast_2d(means[0]).T) / np.atleast_2d(stds[0]).T
     melgram2 = (melgram2 - np.atleast_2d(means[1]).T) / np.atleast_2d(stds[1]).T
     melgram3 = (melgram3 - np.atleast_2d(means[2]).T) / np.atleast_2d(stds[2]).T
-    
+
     # Zero pad ends
     melgram1 = zeropad2d(melgram1, contextlen)
     melgram2 = zeropad2d(melgram2, contextlen)
     melgram3 = zeropad2d(melgram3, contextlen)
-    
+
     # Make chunks
     melgram1_chunks = makechunks(melgram1, duration)
     melgram2_chunks = makechunks(melgram2, duration)
     melgram3_chunks = makechunks(melgram3, duration)
-    
+
     # Generate song labels
     hop_dur = 10e-3
     labels = np.zeros(melgram1_chunks.shape[0])
     weights = np.ones(melgram1_chunks.shape[0])
     idxs = np.array(np.round(onsets / hop_dur), dtype=int)
     labels[idxs] = 1
-    
+
     # Target smearing
     labels[idxs - 1] = 1
     labels[idxs + 1] = 1
@@ -107,20 +116,21 @@ for item in songlist:
 
     labels_dict = {}
     weights_dict = {}
-    
+
     # Save
     if not os.path.exists(savedir):
         os.makedirs(savedir)
-    
+
     for i_chunk in range(melgram1_chunks.shape[0]):
         savepath = os.path.join(savedir, str(i_chunk) + '.pt')
+        print(f'Saving chunk {i_chunk} to {savepath}')
         torch.save(torch.tensor(np.array([melgram1_chunks[i_chunk], melgram2_chunks[i_chunk], melgram3_chunks[i_chunk]])), savepath)
-        
+
         # Verify if the file was created
         if not os.path.exists(savepath):
             print(f'Error: {savepath} was not created.')
-            break
-            
+            continue
+
         filelist.append(savepath)
         labels_dict[savepath] = labels[i_chunk]
         weights_dict[savepath] = weights[i_chunk]
@@ -128,10 +138,10 @@ for item in songlist:
     # Append labels to master
     labels_master.update(labels_dict)
     weights_master.update(weights_dict)
-    
+
     np.savetxt(os.path.join(savedir, 'labels.txt'), labels)
     np.savetxt(os.path.join(savedir, 'weights.txt'), weights)
-    
+
     processed_files += 1
     print(f'Processed {processed_files}/{total_files} files.')
 
