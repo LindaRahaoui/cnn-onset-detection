@@ -19,12 +19,12 @@ def makechunks(x, duration):
     return y
 
 # Data dirs
-audio_dir ='/content/drive/MyDrive/Dataset_cnn/wav'
-onset_dir ='/content/drive/MyDrive/Dataset_cnn/annotations/'
+audio_dir = '/content/drive/MyDrive/Dataset_cnn/wav'
+onset_dir = '/content/drive/MyDrive/Dataset_cnn/annotations/'
 save_dir = '/content/drive/MyDrive/Dataset_cnn/data_pt_test'
 
 # Data stats for normalization
-stats = np.load('/content/cnn-onset-detection/means_stds.npy')
+stats = np.load('/content/drive/MyDrive/Dataset_cnn/means_stds.npy')
 means = stats[0]
 stds = stats[1]
 
@@ -39,6 +39,15 @@ audio_format = '.wav'
 labels_master = {}
 weights_master = {}
 filelist = []
+total_files = len(songlist)
+processed_files = 0
+
+# Count already processed files
+for item in songlist:
+    savedir = os.path.join(save_dir, item)
+    if os.path.exists(savedir) and len(os.listdir(savedir)) > 1005:
+        processed_files += 1
+
 for item in songlist:
     savedir = os.path.join(save_dir, item)
     
@@ -51,7 +60,9 @@ for item in songlist:
     x, fs = librosa.load(os.path.join(audio_dir, item + audio_format), sr=44100)
     print(onset_dir, item + '_annotation.csv')
     if not os.path.exists(os.path.join(onset_dir, item + '_annotation.csv')):
-        continue
+        path = os.path.join(onset_dir, item + '_annotation.csv')
+        print(f"{path} n'existe pas")
+        break
     
     # Load only the first column (onsets) and skip the first row (header)
     onsets = np.loadtxt(os.path.join(onset_dir, item + '_annotation.csv'), delimiter=',', skiprows=1, usecols=0)
@@ -103,13 +114,12 @@ for item in songlist:
     
     for i_chunk in range(melgram1_chunks.shape[0]):
         savepath = os.path.join(savedir, str(i_chunk) + '.pt')
-        print(f'Saving chunk {i_chunk} to {savepath}')
         torch.save(torch.tensor(np.array([melgram1_chunks[i_chunk], melgram2_chunks[i_chunk], melgram3_chunks[i_chunk]])), savepath)
         
         # Verify if the file was created
         if not os.path.exists(savepath):
             print(f'Error: {savepath} was not created.')
-            continue
+            break
             
         filelist.append(savepath)
         labels_dict[savepath] = labels[i_chunk]
@@ -122,6 +132,9 @@ for item in songlist:
     np.savetxt(os.path.join(savedir, 'labels.txt'), labels)
     np.savetxt(os.path.join(savedir, 'weights.txt'), weights)
     
+    processed_files += 1
+    print(f'Processed {processed_files}/{total_files} files.')
+
 np.save('labels_master.npy', labels_master)
 np.save('weights_master.npy', weights_master)
 np.savetxt('filelist.txt', filelist, fmt='%s')
