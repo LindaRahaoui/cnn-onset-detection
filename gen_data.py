@@ -145,6 +145,6 @@ for item in songlist:
     processed_files += 1
     print(f'Processed {processed_files}/{total_files} files.')
 
-np.save('labels_master.npy', labels_master)
-np.save('weights_master.npy', weights_master)
-np.savetxt('filelist.txt', filelist, fmt='%s')
+np.save('/content/drive/MyDrive/Dataset_cnn/labels_master.npy', labels_master)
+np.save('/content/drive/MyDrive/Dataset_cnn/weights_master.npy', weights_master)
+np.savetxt('/content/drive/MyDrive/Dataset_cnn/filelist.txt', filelist, fmt='%s')
