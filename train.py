@@ -30,10 +30,10 @@ def main(fold):
 
     # Data
     datadir = '/content/drive/MyDrive/Dataset_cnn/data_pt_test'
-    with open('songlist.txt', 'r') as file:
+    with open('/content/drive/MyDrive/Dataset_cnn/songlist.txt', 'r') as file:
         songlist = file.read().splitlines()
-    labels = np.load('labels_master.npy', allow_pickle=True).item()
-    weights = np.load('weights_master.npy', allow_pickle=True).item()
+    labels = np.load('/content/drive/MyDrive/Dataset_cnn/labels_master.npy', allow_pickle=True).item()
+    weights = np.load('/content/drive/MyDrive/Dataset_cnn/weights_master.npy', allow_pickle=True).item()
 
     # Model
     model = onsetCNN().double().to(device)
@@ -43,7 +43,7 @@ def main(fold):
 
     # Cross-validation loop
     partition = {'all': [], 'train': [], 'validation': []}
-    val_split = np.loadtxt(f'../../Dataset/splits/8-fold_cv_random_{fold}.fold', dtype='str')
+    val_split = np.loadtxt(f'/content/drive/MyDrive/Dataset_cnn/splits/8-fold_cv_random_{fold}.fold', dtype='str')
     for song in songlist:
         ids = glob.glob(os.path.join(datadir, song, '*.pt'))
         if song in val_split:

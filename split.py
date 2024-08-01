@@ -3,7 +3,7 @@ from sklearn.model_selection import KFold
 import os
 
 # Charger la liste des chansons
-with open('songlist.txt', 'r') as file:
+with open('/content/drive/MyDrive/Dataset_cnn/songlist.txt', 'r') as file:
     songlist = np.array(file.read().splitlines())
 
 # Créer un répertoire pour les splits s'il n'existe pas

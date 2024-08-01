@@ -6,7 +6,7 @@ import librosa
 audio_dir = '/content/drive/MyDrive/Dataset_cnn/wav'
 
 # Load the list of song names from 'songlist.txt' 
-with open('/content/cnn-onset-detection/songlist.txt', 'r') as file:
+with open('/content/drive/MyDrive/Dataset_cnnsonglist.txt', 'r') as file:
     songlist = file.read().splitlines()
 
 
