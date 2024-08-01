@@ -11,7 +11,6 @@ import os
 def balance_data(ids, labels):
     ids2add = []
     for idi in ids:
-        print(idi)
         if labels[idi] == 1:
             ids2add.append(idi)
             ids2add.append(idi)
@@ -32,8 +31,8 @@ def main(fold):
     datadir = '/content/drive/MyDrive/Dataset_cnn/data_pt_test'
     with open('/content/drive/MyDrive/Dataset_cnn/songlist.txt', 'r') as file:
         songlist = file.read().splitlines()
-    labels = np.load('/content/drive/MyDrive/Dataset_cnn/labels_master.npy', allow_pickle=True).item()
-    weights = np.load('/content/drive/MyDrive/Dataset_cnn/weights_master.npy', allow_pickle=True).item()
+    labels = np.load('/content/drive/MyDrive/Dataset_cnn/labels_master.npy').item()
+    weights = np.load('/content/drive/MyDrive/Dataset_cnn/weights_master.npy').item()
 
     # Model
     model = onsetCNN().double().to(device)
@@ -42,6 +41,7 @@ def main(fold):
     # optimizer=torch.optim.Adam(model.parameters(), lr=0.05)
 
     # Cross-validation loop
+    fold = int(sys.argv[1]) #cmd line argument
     partition = {'all': [], 'train': [], 'validation': []}
     val_split = np.loadtxt(f'/content/drive/MyDrive/Dataset_cnn/splits/8-fold_cv_random_{fold}.fold', dtype='str')
     for song in songlist:
@@ -52,7 +52,7 @@ def main(fold):
             partition['train'].extend(ids)
 
     # Balance data
-    partition['train'] = balance_data(partition['train'], labels)
+    #partition['train'] = balance_data(partition['train'], labels)
 
     # Print data balance percentage
     n_ones = 0.
@@ -67,19 +67,21 @@ def main(fold):
 
     validation_set = Dataset(partition['validation'], labels, weights)
     validation_generator = data.DataLoader(validation_set, **params)
-
+    print("Generator done")
     # Training epochs loop
     train_loss_epoch = []
     val_loss_epoch = []
     best_val_loss = float('inf')
 
     for epoch in range(max_epochs):
+        
         train_loss_epoch += [0]
         val_loss_epoch += [0]
 
         ## Training
         n_train = 0
         for local_batch, local_labels, local_weights in training_generator:
+            print("Training...")
             n_train += local_batch.shape[0]
 
             # Transfer to GPU
