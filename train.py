@@ -163,3 +163,8 @@ def main(fold):
     plt.savefig('./plots/loss_curves_%d'%fold)
     plt.clf()
     torch.save(model.state_dict(), 'saved_model_%d.pt'%fold)
+
+
+if __name__ == '__main__':
+    fold = int(sys.argv[1])  # cmd line argument
+    main(fold)
