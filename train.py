@@ -28,12 +28,13 @@ def main(fold):
     max_epochs = 50
 
     # Data
-    datadir = '/content/drive/MyDrive/Dataset_cnn/data_pt_test'
-    with open('/content/drive/MyDrive/Dataset_cnn/songlist.txt', 'r') as file:
+    datadir = 'Small_Dataset/data_pt_test'
+ 
+    with open('songlist.txt', 'r') as file:
         songlist = file.read().splitlines()
-    labels = np.load('/content/drive/MyDrive/Dataset_cnn/labels_master.npy',allow_pickle=True).item()
-    weights = np.load('/content/drive/MyDrive/Dataset_cnn/weights_master.npy',allow_pickle=True).item()
-
+    labels = np.load('labels_master.npy',allow_pickle=True).item()
+    weights = np.load('weights_master.npy',allow_pickle=True).item()
+  
     # Model
     model = onsetCNN().double().to(device)
     criterion = torch.nn.BCELoss(reduction='none')
@@ -43,23 +44,55 @@ def main(fold):
     # Cross-validation loop
     fold = int(sys.argv[1]) #cmd line argument
     partition = {'all': [], 'train': [], 'validation': []}
-    val_split = np.loadtxt(f'/content/drive/MyDrive/Dataset_cnn/splits/8-fold_cv_random_{fold}.fold', dtype='str')
+    # val_split = np.loadtxt(f'../../Small_Dataset/splits/8-fold_cv_random_{fold}.fold', dtype='str')
+     
+    # val_split = np.loadtxt('../../New_Dataset/splits/8-fold_cv_random_%d.fold'%fold,dtype='str')
+  
+  
+    dataset_folder = 'Small_Dataset/splits'
+    file_name = '8-fold_cv_random_%d.fold' % fold
+    file_path = os.path.join(dataset_folder, file_name)
+
+    # Lire le fichier ligne par ligne
+    with open(file_path, 'r') as file:
+        val_split = file.readlines()
+
+    # Supprimer les caractères de fin de ligne et afficher le contenu
+    val_split = [line.strip() for line in val_split]
+    print(val_split)
+
+
     for song in songlist:
-        ids = glob.glob(os.path.join(datadir, song, '*.pt'))
+       
+        folder_path = os.path.join(datadir, song)
+        if not os.path.exists(folder_path):
+            print(f"Folder not found: {folder_path}")
+        ids = glob.glob(os.path.join(folder_path, '*.pt'))
+        
         if song in val_split:
+          
             partition['validation'].extend(ids)
         else:
+            
             partition['train'].extend(ids)
 
+    # save labels in txt
+    with open('labels.txt', 'w') as file:
+        file.write(str(labels))
+    # save partition 
+    with open('partition.txt', 'w') as file:
+        file.write(str(partition))
+    
     # Balance data
     #partition['train'] = balance_data(partition['train'], labels)
 
     # Print data balance percentage
-    n_ones = 0.
+
+    n_ones=0.
     for idi in partition['train']:
-        if labels[idi] == 1.:
-            n_ones += 1
-    print('Fraction of positive examples: %f' % (n_ones / len(partition['train'])))
+        if labels[idi]==1.: 
+            n_ones+=1
+    print('Fraction of positive examples: %f'%(n_ones/len(partition['train'])))
 
     # Generators
     training_set = Dataset(partition['train'], labels, weights)
@@ -67,75 +100,66 @@ def main(fold):
 
     validation_set = Dataset(partition['validation'], labels, weights)
     validation_generator = data.DataLoader(validation_set, **params)
-     print("Generator done")
-    # Training epochs loop
-    train_loss_epoch = []
-    val_loss_epoch = []
-    best_val_loss = float('inf')
+    print("Generator done")
 
+  
+ 
+    print("Training...")
+        
+    #training epochs loop
+    train_loss_epoch=[]
+    val_loss_epoch=[]
     for epoch in range(max_epochs):
-        print("Training...")
-        train_loss_epoch += [0]
-        val_loss_epoch += [0]
+        train_loss_epoch+=[0]
+        val_loss_epoch+=[0]
 
-        ## Training
-        n_train = 0
+        ##training
+        n_train=0
         for local_batch, local_labels, local_weights in training_generator:
-            n_train += local_batch.shape[0]
-
-            # Transfer to GPU
+            n_train+=local_batch.shape[0]
+            
+            #transfer to GPU
             local_batch, local_labels, local_weights = local_batch.to(device), local_labels.to(device), local_weights.to(device)
 
-            # Update weights
+            #update weights
             optimizer.zero_grad()
             outs = model(local_batch).squeeze()
             loss = criterion(outs, local_labels)
-            loss = torch.dot(loss, local_weights)
+            loss = torch.dot(loss,local_weights)
             loss /= local_batch.size()[0]
             loss.backward()
             optimizer.step()
-            train_loss_epoch[-1] += loss.item()
-        train_loss_epoch[-1] /= n_train
-
-        ## Validation
-        n_val = 0
+            train_loss_epoch[-1]+=loss.item()
+        train_loss_epoch[-1]/=n_train
+        
+        ##validation
+        n_val=0
         with torch.set_grad_enabled(False):
             for local_batch, local_labels, local_weights in validation_generator:
-                n_val += local_batch.shape[0]
+                n_val+=local_batch.shape[0]
 
-                # Transfer to GPU
+                #transfer to GPU
                 local_batch, local_labels = local_batch.to(device), local_labels.to(device)
-
-                # Evaluate model
+                
+                #evaluate model
                 outs = model(local_batch).squeeze()
                 loss = criterion(outs, local_labels).mean()
-                val_loss_epoch[-1] += loss.item()
-        val_loss_epoch[-1] /= n_val
+                val_loss_epoch[-1]+=loss.item()
+        val_loss_epoch[-1]/=n_val
 
-        # Print loss in current epoch
-        print('Epoch no: %d/%d\tTrain loss: %f\tVal loss: %f' % (epoch, max_epochs, train_loss_epoch[-1], val_loss_epoch[-1]))
-
-        # Check if this is the best model so far and save it with the epoch number
-        if val_loss_epoch[-1] < best_val_loss:
-            best_val_loss = val_loss_epoch[-1]
-            best_model_path = f'best_model_{fold}_epoch_{epoch}.pt'
-            torch.save(model.state_dict(), best_model_path)
-
-        # Update LR and momentum (only if using SGD)
+        #print loss in current epoch
+        print('Epoch no: %d/%d\tTrain loss: %f\tVal loss: %f'%(epoch, max_epochs, train_loss_epoch[-1], val_loss_epoch[-1]))
+        
+        #update LR and momentum (only if using SGD)
         for param_group in optimizer.param_groups:
             param_group['lr'] *= 0.995
-            if 10 <= epoch <= 20:
-                param_group['momentum'] += 0.045
+            if 10<=epoch<=20: param_group['momentum'] += 0.045
 
-    # Plot losses vs epoch
-    os.makedirs('./plots', exist_ok=True)
-    plt.plot(train_loss_epoch, label='train')
-    plt.plot(val_loss_epoch, label='val')
+    print("Training done")
+    #plot losses vs epoch
+    plt.plot(train_loss_epoch,label='train')
+    plt.plot(val_loss_epoch,label='val')
     plt.legend()
-    plt.savefig(f'./plots/loss_curves_{fold}')
+    plt.savefig('./plots/loss_curves_%d'%fold)
     plt.clf()
-    torch.save(model.state_dict(), f'saved_model_{fold}.pt')
-
-if __name__ == '__main__':
-    fold = int(sys.argv[1])  # cmd line argument
-    main(fold)
+    torch.save(model.state_dict(), 'saved_model_%d.pt'%fold)

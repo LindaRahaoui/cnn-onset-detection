@@ -3,10 +3,10 @@ import os
 import librosa
 
 # Data directory
-audio_dir = '/content/drive/MyDrive/Dataset_cnn/wav'
+audio_dir = 'Small_Dataset/wav'
 
 # Load the list of song names from 'songlist.txt' 
-with open('/content/drive/MyDrive/Dataset_cnnsonglist.txt', 'r') as file:
+with open('songlist.txt', 'r') as file:
     songlist = file.read().splitlines()
 
 
@@ -64,4 +64,4 @@ stds_song[1] /= len(songlist)
 stds_song[2] /= len(songlist)
 
 # Save the results
-np.save('/content/drive/MyDrive/Dataset_cnn/means_stds.npy', np.array([means_song, stds_song]))
+np.save('means_stds.npy', np.array([means_song, stds_song]))

@@ -19,12 +19,12 @@ def makechunks(x, duration):
     return y
 
 # Data dirs
-audio_dir = '/content/drive/MyDrive/Dataset_cnn/wav'
-onset_dir = '/content/drive/MyDrive/Dataset_cnn/annotations/'
-save_dir = '/content/drive/MyDrive/Dataset_cnn/data_pt_test'
+audio_dir = 'Small_Dataset/wav'
+onset_dir = 'Small_Dataset/annotations'
+save_dir = 'Small_Dataset/data_pt_test'
 
 # Data stats for normalization
-stats = np.load('/content/drive/MyDrive/Dataset_cnn/means_stds.npy')
+stats = np.load('means_stds.npy')
 means = stats[0]
 stds = stats[1]
 
@@ -33,7 +33,7 @@ contextlen = 7  # +- frames
 duration = 2 * contextlen + 1
 
 # Main
-with open('/content/cnn-onset-detection/songlist.txt', 'r') as file:
+with open('songlist.txt', 'r') as file:
     songlist = file.read().splitlines()
 audio_format = '.wav'
 labels_master = {}
@@ -45,27 +45,6 @@ processed_files = 0
 
 for item in songlist:
     savedir = os.path.join(save_dir, item)
-
-    # Check if the directory exists
-    if os.path.exists(savedir):
-        # Load existing labels and weights
-        labels_path = os.path.join(savedir, 'labels.txt')
-        weights_path = os.path.join(savedir, 'weights.txt')
-
-        if os.path.exists(labels_path) and os.path.exists(weights_path):
-            existing_labels = np.loadtxt(labels_path)
-            existing_weights = np.loadtxt(weights_path)
-            labels_dict = {}
-            weights_dict = {}
-            for i in range(existing_labels.shape[0]):
-                file_path = os.path.join(savedir, f"{i}.pt")
-                labels_dict[file_path] = existing_labels[i]
-                weights_dict[file_path] = existing_weights[i]
-            labels_master.update(labels_dict)
-            weights_master.update(weights_dict)
-            processed_files += 1
-            print(f'Skipping {item}, already processed. ({processed_files}/{total_files} files processed)')
-            continue
 
     # Load audio and onsets
     x, fs = librosa.load(os.path.join(audio_dir, item + audio_format), sr=44100)
@@ -123,7 +102,7 @@ for item in songlist:
 
     for i_chunk in range(melgram1_chunks.shape[0]):
         savepath = os.path.join(savedir, str(i_chunk) + '.pt')
-        print(f'Saving chunk {i_chunk} to {savepath}')
+        
         torch.save(torch.tensor(np.array([melgram1_chunks[i_chunk], melgram2_chunks[i_chunk], melgram3_chunks[i_chunk]])), savepath)
 
         # Verify if the file was created
@@ -145,6 +124,6 @@ for item in songlist:
     processed_files += 1
     print(f'Processed {processed_files}/{total_files} files.')
 
-np.save('/content/drive/MyDrive/Dataset_cnn/labels_master.npy', labels_master)
-np.save('/content/drive/MyDrive/Dataset_cnn/weights_master.npy', weights_master)
-np.savetxt('/content/drive/MyDrive/Dataset_cnn/filelist.txt', filelist, fmt='%s')
+np.save('labels_master.npy', labels_master)
+np.save('weights_master.npy', weights_master)
+np.savetxt('filelist.txt', filelist, fmt='%s')
