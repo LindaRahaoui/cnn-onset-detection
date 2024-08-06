@@ -61,7 +61,7 @@ def main(fold):
     val_split = [line.strip() for line in val_split]
     print(val_split)
 
-
+    breakpoint()
     for song in songlist:
        
         folder_path = os.path.join(datadir, song)
@@ -90,7 +90,9 @@ def main(fold):
 
     n_ones=0.
     for idi in partition['train']:
-        if labels[idi]==1.: 
+        # normalise idi
+
+        if labels[ os.path.normpath(idi)]==1.: 
             n_ones+=1
     print('Fraction of positive examples: %f'%(n_ones/len(partition['train'])))
 
@@ -156,13 +158,16 @@ def main(fold):
             if 10<=epoch<=20: param_group['momentum'] += 0.045
 
     print("Training done")
+    # Ensure the plots directory exists
+    os.makedirs('./plots', exist_ok=True)
+
     #plot losses vs epoch
-    plt.plot(train_loss_epoch,label='train')
-    plt.plot(val_loss_epoch,label='val')
+    plt.plot(train_loss_epoch, label='train')
+    plt.plot(val_loss_epoch, label='val')
     plt.legend()
-    plt.savefig('./plots/loss_curves_%d'%fold)
+    plt.savefig('./plots/loss_curves_%d.png' % fold)
     plt.clf()
-    torch.save(model.state_dict(), 'saved_model_%d.pt'%fold)
+    torch.save(model.state_dict(), 'saved_model_fold_%d.pt' % fold)
 
 
 if __name__ == '__main__':
