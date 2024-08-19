@@ -33,8 +33,6 @@ class onsetCNN(nn.Module):
 
    
 
-
-
 #data-loader(https://stanford.edu/~shervine/blog/pytorch-how-to-generate-data-parallel)
 class Dataset(data.Dataset):
   'Characterizes a dataset for PyTorch'

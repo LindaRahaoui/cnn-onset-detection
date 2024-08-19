@@ -6,6 +6,7 @@ from utils import onsetCNN, Dataset
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import random
 
 # Function to print GPU utilization
 def print_gpu_utilization():
@@ -21,9 +22,19 @@ def balance_data(ids, labels):
         if labels[idi] == 1:
             ids2add.append(idi)
             ids2add.append(idi)
-            ids2add.append(idi)
+      
     ids.extend(ids2add)
     return ids
+
+
+def under_sample_data(ids, labels):
+    majority_class_ids = [idi for idi in ids if labels[idi] == 0]
+    minority_class_ids = [idi for idi in ids if labels[idi] == 1]
+    
+    # Sous-échantillonnage de la classe majoritaire
+    majority_class_ids = random.sample(majority_class_ids, len(minority_class_ids))
+    
+    return majority_class_ids + minority_class_ids
 
 def main(folds):
     # Use GPU
@@ -45,13 +56,17 @@ def main(folds):
     labels = np.load('labels_master.npy', allow_pickle=True).item()
     weights = np.load('weights_master.npy', allow_pickle=True).item()
 
+    # Calculate the fraction of positive examples to set the weight for the loss function
+    pos_weight = sum(labels.values()) / len(labels)
+    pos_weight = (1 - pos_weight) / pos_weight  # Inverse ratio for weighting
+
     for fold in range(folds):
         print(f"Starting training for fold {fold + 1}/{folds}")
 
         # Model
         model = onsetCNN().float().to(device)
         criterion = torch.nn.BCELoss(reduction='none')
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.05, momentum=0.45)
+        optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
 
         # Cross-validation loop
         partition = {'all': [], 'train': [], 'validation': []}
@@ -79,7 +94,13 @@ def main(folds):
                 partition['train'].extend(ids)
 
         # Balance data
-        partition['train'] = balance_data(partition['train'], labels)
+        #  partition['train'] = balance_data(partition['train'], labels)
+        partition['train'] =under_sample_data(partition['train'], labels)
+        n_ones = 0.
+        for idi in partition['train']:
+            if labels[os.path.normpath(idi)] == 1.: 
+                n_ones += 1
+        print('Fraction of positive examples: %f' % (n_ones / len(partition['train'])))
 
         # Generators
         training_set = Dataset(partition['train'], labels, weights)
@@ -107,8 +128,6 @@ def main(folds):
             total_train = 0
             total_val = 0
 
-            ## GPU Utilization before epoch
-            # print(f"Epoch {epoch + 1}/{max_epochs} GPU Utilization Before Training:")
             print_gpu_utilization()
 
             ## Training
@@ -119,12 +138,17 @@ def main(folds):
                 # Transfer to GPU and convert to float
                 local_batch, local_labels, local_weights = local_batch.to(device).float(), local_labels.to(device).float(), local_weights.to(device).float()
                 
-                # Update weights
                 optimizer.zero_grad()
                 outs = model(local_batch).squeeze()
                 loss = criterion(outs, local_labels)
                 loss = torch.dot(loss, local_weights)
                 loss /= local_batch.size()[0]
+
+                # L2 Regularization
+                l2_lambda = 1e-4  # Coefficient for L2 regularization
+                l2_loss = sum(p.pow(2.0).sum() for p in model.parameters())
+                loss += l2_lambda * l2_loss
+
                 loss.backward()
                 optimizer.step()
                 train_loss_epoch[-1] += loss.item()
@@ -135,9 +159,7 @@ def main(folds):
 
             train_loss_epoch[-1] /= total_train
             train_acc_epoch.append(train_correct / total_train)
-           
-            ## GPU Utilization after training
-            # print(f"Epoch {epoch + 1}/{max_epochs} GPU Utilization After Training:")
+
             print_gpu_utilization()
 
             ## Validation
@@ -146,22 +168,18 @@ def main(folds):
                 for local_batch, local_labels, local_weights in validation_generator:
                     total_val += local_batch.shape[0]
 
-                    # Transfer to GPU and convert to float
                     local_batch, local_labels = local_batch.to(device).float(), local_labels.to(device).float()
 
-                    # Evaluate model
                     outs = model(local_batch).squeeze()
                     loss = criterion(outs, local_labels).mean()
                     val_loss_epoch[-1] += loss.item()
 
-                    # Calculate accuracy
                     predicted = (outs > 0.5).float()
                     val_correct += (predicted == local_labels).sum().item()
 
                 val_loss_epoch[-1] /= total_val
                 val_acc_epoch.append(val_correct / total_val)
 
-            # Print loss and accuracy in current epoch
             print(f'Fold {fold + 1} - Epoch {epoch + 1}/{max_epochs}\tTrain loss: {train_loss_epoch[-1]:.6f}\tVal loss: {val_loss_epoch[-1]:.6f}\tTrain Acc: {train_acc_epoch[-1]:.6f}\tVal Acc: {val_acc_epoch[-1]:.6f}')
 
             # Early Stopping
@@ -179,8 +197,8 @@ def main(folds):
             # Update LR and momentum (only if using SGD)
             for param_group in optimizer.param_groups:
                 param_group['lr'] *= 0.995
-                if 10 <= epoch <= 20:
-                    param_group['momentum'] += 0.045
+                # if 10 <= epoch <= 20:
+                #     param_group['momentum'] += 0.045
 
         print(f"Training done for fold {fold + 1}")
 
