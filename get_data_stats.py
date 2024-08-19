@@ -3,7 +3,7 @@ import os
 import librosa
 
 # Data directory
-audio_dir = 'Small_Dataset/wav'
+audio_dir = 'dataset/wav'
 
 # Load the list of song names from 'songlist.txt' 
 with open('songlist.txt', 'r') as file:

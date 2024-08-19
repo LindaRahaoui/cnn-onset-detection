@@ -1,7 +1,7 @@
 import os
 
 # Définir le chemin du répertoire
-directory_path = 'Small_Dataset/inference'
+directory_path = 'dataset/wav'
 songlist = []
 
 # Parcourir les fichiers dans le répertoire
@@ -13,6 +13,6 @@ for file in os.listdir(directory_path):
         songlist.append(filename_without_extension)
 
 # Enregistrer la liste des noms de fichiers dans un fichier texte
-with open('songlist_inference.txt', 'w') as f:
+with open('songlist.txt', 'w') as f:
     for song in songlist:
         f.write("%s\n" % song)
